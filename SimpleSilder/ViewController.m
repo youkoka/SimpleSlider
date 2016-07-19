@@ -23,8 +23,12 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
     
-    self.sliderControl.sliderMinValue = 0;
+    self.sliderControl.sliderMinValue = 50;
     self.sliderControl.sliderMaxValue = 100;
+    
+    self.sliderControl.sliderActivityColor = [UIColor redColor];
+    self.sliderControl.sliderBGColor = [UIColor grayColor];
+    self.sliderControl.diameterColor = [UIColor greenColor];
     
     self.sliderControl.sliderControlDelegate = self;
 }
@@ -34,8 +38,10 @@
     // Dispose of any resources that can be recreated.
 }
 
--(void) currentSliderValue:(CGFloat) value minValue:(CGFloat)minValue andMaxValue:(CGFloat)maxValue {
+-(void) currentSliderValue:(CGFloat) currentValue minValue:(CGFloat)minValue andMaxValue:(CGFloat)maxValue {
     
-    self.lbValue.text = [NSString stringWithFormat:@"%.f", value];
+    self.lbValue.text = [NSString stringWithFormat:@"%.f", currentValue];
+    
+    NSLog(@"current value = %f, min value = %f, max value = %f", currentValue, minValue, maxValue);
 }
 @end
