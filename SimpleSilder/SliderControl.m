@@ -190,14 +190,20 @@
     
     CGFloat offsetX = self.percentage * CGRectGetMaxX(self.sliderBGLayer.frame);
     
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
     self.sliderActivityLayer.frame = CGRectMake(0, self.layer.frame.size.height / 2, offsetX, SLIDER_BG_HEIGHT);
+    [CATransaction commit];
 }
 
 -(void) updateSphericalPosition {
     
     CGFloat offsetX = self.percentage * CGRectGetMaxX(self.sliderBGLayer.frame);
     
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
     self.sphericalLayer.position = CGPointMake(offsetX, self.sliderBGLayer.frame.origin.y);
+    [CATransaction commit];
 }
 
 @end
