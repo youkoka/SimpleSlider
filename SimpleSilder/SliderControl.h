@@ -10,7 +10,13 @@
 
 @protocol SliderControlDelegate <NSObject>
 
--(void) currentSliderValue:(CGFloat) currentValue minValue:(CGFloat)minValue andMaxValue:(CGFloat)maxValue;
+@optional
+
+-(void) beginSliderValue:(CGFloat) currentValue minValue:(CGFloat)minValue andMaxValue:(CGFloat)maxValue;
+
+-(void) continueSliderValue:(CGFloat) currentValue minValue:(CGFloat)minValue andMaxValue:(CGFloat)maxValue;
+
+-(void) endSliderValue:(CGFloat) currentValue minValue:(CGFloat)minValue andMaxValue:(CGFloat)maxValue;
 
 @end
 
@@ -27,5 +33,7 @@
 @property (nonatomic, strong) UIColor *sliderActivityColor;
 
 @property (nonatomic, strong) UIColor *diameterColor;
+
+-(void) setValue:(CGFloat) value;
 
 @end

@@ -15,6 +15,8 @@
 
 @property (nonatomic, assign) IBOutlet SliderControl *sliderControl;
 
+-(void) updateValue;
+
 @end
 
 @implementation ViewController
@@ -31,6 +33,13 @@
     self.sliderControl.diameterColor = [UIColor greenColor];
     
     self.sliderControl.sliderControlDelegate = self;
+    
+    [self performSelector:@selector(updateValue) withObject:nil afterDelay:5];
+}
+
+-(void) updateValue {
+    
+    [self.sliderControl setValue:90];
 }
 
 - (void)didReceiveMemoryWarning {
@@ -38,7 +47,7 @@
     // Dispose of any resources that can be recreated.
 }
 
--(void) currentSliderValue:(CGFloat) currentValue minValue:(CGFloat)minValue andMaxValue:(CGFloat)maxValue {
+-(void) continueSliderValue:(CGFloat) currentValue minValue:(CGFloat)minValue andMaxValue:(CGFloat)maxValue {
     
     self.lbValue.text = [NSString stringWithFormat:@"%.f", currentValue];
     

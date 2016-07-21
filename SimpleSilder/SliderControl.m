@@ -10,7 +10,7 @@
 
 #define SPHERICAL_DIAMETER  16
 
-#define SLIDER_BG_HEIGHT    2
+#define SLIDER_BG_HEIGHT    3
 
 @interface SliderControl()
 
@@ -20,11 +20,16 @@
 
 @property (nonatomic, strong) CALayer *sphericalLayer;
 
-@property (nonatomic, assign) CGFloat percentage;
+@property (nonatomic, assign) CGFloat sphericalPosX;
+
+@property (nonatomic, assign) CGFloat selectedValue;
+
 
 -(void) initializeControl;
 
--(CGFloat) getPrecentValueByWidth:(CGFloat) value;
+-(CGFloat) getPrecentByValue:(CGFloat) value;
+
+-(float)getXPositionAlongLineForValue:(float) value;
 
 -(void) updateActivityLayerFrame;
 
@@ -66,11 +71,12 @@
     [self.layer addSublayer:self.sliderActivityLayer];
     
     self.sphericalLayer = [CALayer layer];
-    self.sphericalLayer.frame = CGRectMake(0, self.sliderBGLayer.frame.origin.y, SPHERICAL_DIAMETER, SPHERICAL_DIAMETER);
+    self.sphericalLayer.frame = CGRectMake(0, self.sliderBGLayer.frame.origin.y / 2, SPHERICAL_DIAMETER, SPHERICAL_DIAMETER);
     self.sphericalLayer.cornerRadius = SPHERICAL_DIAMETER / 2;
     [self.layer addSublayer:self.sphericalLayer];
     
-    self.percentage = 0;
+    self.sphericalPosX = 0;
+    self.selectedValue = 0;
 }
 
 -(void) layoutSubviews {
@@ -82,14 +88,16 @@
     self.sphericalLayer.backgroundColor = self.diameterColor.CGColor;
     self.sliderBGLayer.frame = CGRectMake(0, self.layer.frame.size.height / 2, self.layer.frame.size.width, SLIDER_BG_HEIGHT);
     
+//    self.sphericalPosX = [self getXPositionAlongLineForValue:_selectedValue];
+    
     [self updateActivityLayerFrame];
     [self updateSphericalPosition];
 }
 
 - (BOOL)beginTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event {
-
+    
     CGPoint pressedPoint = [touch locationInView:self];
-
+    
     if (pressedPoint.x < 0) {
         
         pressedPoint.x = 0;
@@ -98,32 +106,13 @@
         
         pressedPoint.x = CGRectGetMaxX(self.sliderBGLayer.frame);
     }
-
-    self.percentage = [self getPrecentValueByWidth:pressedPoint.x];
     
-    [self updateActivityLayerFrame];
-    [self updateSphericalPosition];
+    float percentage = pressedPoint.x / CGRectGetMaxX(self.sliderBGLayer.frame);
     
-    [self animateHandle:self.sphericalLayer withSelection:YES];
+    self.selectedValue = percentage * (self.sliderMaxValue - self.sliderMinValue) + self.sliderMinValue;
     
-    return YES;
-}
-
-- (BOOL)continueTrackingWithTouch:(UITouch *)touch withEvent:(nullable UIEvent *)event {
- 
-    CGPoint pressedPoint = [touch locationInView:self];
-    
-    if (pressedPoint.x < 0) {
-        
-        pressedPoint.x = 0;
-    }
-    else if(pressedPoint.x > CGRectGetMaxX(self.sliderBGLayer.frame)) {
-    
-        pressedPoint.x = CGRectGetMaxX(self.sliderBGLayer.frame);
-    }
-    
-    self.percentage = [self getPrecentValueByWidth:pressedPoint.x];
-    
+    //    self.sphericalPosX = [self getXPositionAlongLineForValue:_selectedValue];
+    [self setValue:_selectedValue];
     [self updateActivityLayerFrame];
     [self updateSphericalPosition];
     
@@ -131,22 +120,61 @@
     
     if (self.sliderControlDelegate != nil) {
         
-        if ([self.sliderControlDelegate respondsToSelector:@selector(currentSliderValue:minValue:andMaxValue:)]) {
+        if ([self.sliderControlDelegate respondsToSelector:@selector(beginSliderValue:minValue:andMaxValue:)]) {
             
-            CGFloat diffValue = self.sliderMaxValue - self.sliderMinValue;
-            CGFloat currentValue = diffValue * self.percentage + self.sliderMinValue;
-            
-            [self.sliderControlDelegate currentSliderValue:currentValue minValue:self.sliderMinValue andMaxValue:self.sliderMaxValue];
+            [self.sliderControlDelegate beginSliderValue:_selectedValue minValue:self.sliderMinValue andMaxValue:self.sliderMaxValue];
         }
     }
+    
+    return YES;
+}
 
+- (BOOL)continueTrackingWithTouch:(UITouch *)touch withEvent:(nullable UIEvent *)event {
+    
+    CGPoint pressedPoint = [touch locationInView:self];
+    
+    if (pressedPoint.x < 0) {
+        
+        pressedPoint.x = 0;
+    }
+    else if(pressedPoint.x > CGRectGetMaxX(self.sliderBGLayer.frame)) {
+        
+        pressedPoint.x = CGRectGetMaxX(self.sliderBGLayer.frame);
+    }
+    
+    float percentage = pressedPoint.x / CGRectGetMaxX(self.sliderBGLayer.frame);
+    
+    self.selectedValue = percentage * (self.sliderMaxValue - self.sliderMinValue) + self.sliderMinValue;
+    
+    [self setValue:_selectedValue];
+    [self updateActivityLayerFrame];
+    [self updateSphericalPosition];
+    
+    [self animateHandle:self.sphericalLayer withSelection:YES];
+    
+    if (self.sliderControlDelegate != nil) {
+        
+        if ([self.sliderControlDelegate respondsToSelector:@selector(continueSliderValue:minValue:andMaxValue:)]) {
+            
+            [self.sliderControlDelegate continueSliderValue:_selectedValue minValue:self.sliderMinValue andMaxValue:self.sliderMaxValue];
+        }
+    }
+    
     return YES;
 }
 
 - (void)endTrackingWithTouch:(nullable UITouch *)touch withEvent:(nullable UIEvent *)event {
-
+    
     [self animateHandle:self.sliderActivityLayer withSelection:NO];
     [self animateHandle:self.sphericalLayer withSelection:NO];
+    
+    if (self.sliderControlDelegate != nil) {
+        
+        if ([self.sliderControlDelegate respondsToSelector:@selector(endSliderValue:minValue:andMaxValue:)]) {
+            
+            [self.sliderControlDelegate endSliderValue:_selectedValue minValue:self.sliderMinValue andMaxValue:self.sliderMaxValue];
+        }
+    }
 }
 
 #pragma mark - Animation
@@ -174,36 +202,58 @@
 
 #pragma mark - Private methods
 
--(CGFloat) getPrecentValueByWidth:(CGFloat) value {
+-(CGFloat) getPrecentByValue:(CGFloat) value {
     
-    CGFloat minWidth = 0;
-    CGFloat maxWidth = CGRectGetMaxX(self.sliderBGLayer.frame);
+    if (self.sliderMinValue == self.sliderMaxValue) {
+        
+        return 0;
+    }
+    else if(value < self.sliderMinValue) {
+        
+        value = self.sliderMinValue;
+    }
     
-    CGFloat diffWidth = maxWidth - minWidth;
+    CGFloat diffWidth = self.sliderMaxValue - self.sliderMinValue;
     
-    CGFloat valueSubtracted = value - 0;
+    CGFloat valueSubtracted = value - self.sliderMinValue;
     
     return valueSubtracted / diffWidth;
 }
 
--(void) updateActivityLayerFrame {
+-(float)getXPositionAlongLineForValue:(float) value {
     
-    CGFloat offsetX = self.percentage * CGRectGetMaxX(self.sliderBGLayer.frame);
+    float percentage = [self getPrecentByValue:value];
+    
+    float maxMinDif = CGRectGetMaxX(self.sliderBGLayer.frame);
+    
+    float offset = percentage * maxMinDif;
+    
+    return offset;
+}
+
+-(void) updateActivityLayerFrame {
     
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    self.sliderActivityLayer.frame = CGRectMake(0, self.layer.frame.size.height / 2, offsetX, SLIDER_BG_HEIGHT);
+    self.sliderActivityLayer.frame = CGRectMake(0, self.layer.frame.size.height / 2, self.sphericalPosX, SLIDER_BG_HEIGHT);
     [CATransaction commit];
 }
 
 -(void) updateSphericalPosition {
     
-    CGFloat offsetX = self.percentage * CGRectGetMaxX(self.sliderBGLayer.frame);
-    
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    self.sphericalLayer.position = CGPointMake(offsetX, self.sliderBGLayer.frame.origin.y);
+    self.sphericalLayer.position = CGPointMake(self.sphericalPosX, self.sliderBGLayer.frame.origin.y);
     [CATransaction commit];
+}
+
+-(void) setValue:(CGFloat) value {
+    
+    self.selectedValue = value;
+    self.sphericalPosX = [self getXPositionAlongLineForValue:value];
+    
+    [self updateActivityLayerFrame];
+    [self updateSphericalPosition];
 }
 
 @end
