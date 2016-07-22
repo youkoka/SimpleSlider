@@ -18,12 +18,17 @@
 
 @property (nonatomic, strong) CALayer *sliderActivityLayer;
 
+@property (nonatomic, strong) CALayer *sliderPlayableLayer;
+
 @property (nonatomic, strong) CALayer *sphericalLayer;
+
+@property (nonatomic, assign) CGFloat playableDurationPosX;
 
 @property (nonatomic, assign) CGFloat sphericalPosX;
 
-@property (nonatomic, assign) CGFloat selectedValue;
+@property (nonatomic, assign) CGFloat playingTime;
 
+@property (nonatomic, assign) CGFloat playableTime;
 
 -(void) initializeControl;
 
@@ -31,9 +36,13 @@
 
 -(float)getXPositionAlongLineForValue:(float) value;
 
--(void) updateActivityLayerFrame;
+-(void) updateBackgroundLayerFrame;
 
--(void) updateSphericalPosition;
+-(void) updatePlayableLayerFrame:(CGFloat) posX;
+
+-(void) updateActivityLayerFrame:(CGFloat) posX;
+
+-(void) updateSphericalPosition:(CGFloat) posX;
 
 @end
 
@@ -67,6 +76,9 @@
     self.sliderBGLayer = [CALayer layer];
     [self.layer addSublayer:self.sliderBGLayer];
     
+    self.sliderPlayableLayer = [CALayer layer];
+    [self.layer addSublayer:self.sliderPlayableLayer];
+    
     self.sliderActivityLayer = [CALayer layer];
     [self.layer addSublayer:self.sliderActivityLayer];
     
@@ -76,7 +88,8 @@
     [self.layer addSublayer:self.sphericalLayer];
     
     self.sphericalPosX = 0;
-    self.selectedValue = 0;
+    self.playingTime = 0;
+    self.playableDurationPosX = 0;
 }
 
 -(void) layoutSubviews {
@@ -84,14 +97,17 @@
     [super layoutSubviews];
     
     self.sliderBGLayer.backgroundColor = self.sliderBGColor.CGColor;
+    self.sliderPlayableLayer.backgroundColor = self.sliderPlayableColor.CGColor;
     self.sliderActivityLayer.backgroundColor = self.sliderActivityColor.CGColor;
     self.sphericalLayer.backgroundColor = self.diameterColor.CGColor;
-    self.sliderBGLayer.frame = CGRectMake(0, self.layer.frame.size.height / 2, self.layer.frame.size.width, SLIDER_BG_HEIGHT);
     
-//    self.sphericalPosX = [self getXPositionAlongLineForValue:_selectedValue];
+    self.sphericalPosX = [self getXPositionAlongLineForValue:_playingTime];
+    self.playableDurationPosX = [self getXPositionAlongLineForValue:_playableTime];
     
-    [self updateActivityLayerFrame];
-    [self updateSphericalPosition];
+    [self updateBackgroundLayerFrame];
+    [self updatePlayableLayerFrame:_playableDurationPosX];
+    [self updateActivityLayerFrame:_sphericalPosX];
+    [self updateSphericalPosition:_sphericalPosX];
 }
 
 - (BOOL)beginTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event {
@@ -109,12 +125,9 @@
     
     float percentage = pressedPoint.x / CGRectGetMaxX(self.sliderBGLayer.frame);
     
-    self.selectedValue = percentage * (self.sliderMaxValue - self.sliderMinValue) + self.sliderMinValue;
+    self.playingTime = percentage * (self.sliderMaxValue - self.sliderMinValue) + self.sliderMinValue;
     
-    //    self.sphericalPosX = [self getXPositionAlongLineForValue:_selectedValue];
-    [self setValue:_selectedValue];
-    [self updateActivityLayerFrame];
-    [self updateSphericalPosition];
+    [self setPlaybackTime:_playingTime];
     
     [self animateHandle:self.sphericalLayer withSelection:YES];
     
@@ -122,7 +135,7 @@
         
         if ([self.sliderControlDelegate respondsToSelector:@selector(beginSliderValue:minValue:andMaxValue:)]) {
             
-            [self.sliderControlDelegate beginSliderValue:_selectedValue minValue:self.sliderMinValue andMaxValue:self.sliderMaxValue];
+            [self.sliderControlDelegate beginSliderValue:_playingTime minValue:self.sliderMinValue andMaxValue:self.sliderMaxValue];
         }
     }
     
@@ -144,11 +157,9 @@
     
     float percentage = pressedPoint.x / CGRectGetMaxX(self.sliderBGLayer.frame);
     
-    self.selectedValue = percentage * (self.sliderMaxValue - self.sliderMinValue) + self.sliderMinValue;
+    self.playingTime = percentage * (self.sliderMaxValue - self.sliderMinValue) + self.sliderMinValue;
     
-    [self setValue:_selectedValue];
-    [self updateActivityLayerFrame];
-    [self updateSphericalPosition];
+    [self setPlaybackTime:_playingTime];
     
     [self animateHandle:self.sphericalLayer withSelection:YES];
     
@@ -156,7 +167,7 @@
         
         if ([self.sliderControlDelegate respondsToSelector:@selector(continueSliderValue:minValue:andMaxValue:)]) {
             
-            [self.sliderControlDelegate continueSliderValue:_selectedValue minValue:self.sliderMinValue andMaxValue:self.sliderMaxValue];
+            [self.sliderControlDelegate continueSliderValue:_playingTime minValue:self.sliderMinValue andMaxValue:self.sliderMaxValue];
         }
     }
     
@@ -172,7 +183,7 @@
         
         if ([self.sliderControlDelegate respondsToSelector:@selector(endSliderValue:minValue:andMaxValue:)]) {
             
-            [self.sliderControlDelegate endSliderValue:_selectedValue minValue:self.sliderMinValue andMaxValue:self.sliderMaxValue];
+            [self.sliderControlDelegate endSliderValue:_playingTime minValue:self.sliderMinValue andMaxValue:self.sliderMaxValue];
         }
     }
 }
@@ -231,29 +242,50 @@
     return offset;
 }
 
--(void) updateActivityLayerFrame {
+-(void) updateBackgroundLayerFrame {
+    
+    self.sliderBGLayer.frame = CGRectMake(0, self.layer.frame.size.height / 2, self.layer.frame.size.width, SLIDER_BG_HEIGHT);
+}
+
+-(void) updatePlayableLayerFrame:(CGFloat) posX {
     
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    self.sliderActivityLayer.frame = CGRectMake(0, self.layer.frame.size.height / 2, self.sphericalPosX, SLIDER_BG_HEIGHT);
+    self.sliderPlayableLayer.frame = CGRectMake(0, self.layer.frame.size.height / 2, posX, SLIDER_BG_HEIGHT);
     [CATransaction commit];
+    
 }
-
--(void) updateSphericalPosition {
+-(void) updateActivityLayerFrame:(CGFloat) posX {
     
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    self.sphericalLayer.position = CGPointMake(self.sphericalPosX, self.sliderBGLayer.frame.origin.y);
+    self.sliderActivityLayer.frame = CGRectMake(0, self.layer.frame.size.height / 2, posX, SLIDER_BG_HEIGHT);
     [CATransaction commit];
 }
 
--(void) setValue:(CGFloat) value {
+-(void) updateSphericalPosition:(CGFloat) posX {
     
-    self.selectedValue = value;
-    self.sphericalPosX = [self getXPositionAlongLineForValue:value];
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.sphericalLayer.position = CGPointMake(posX, self.sliderBGLayer.frame.origin.y);
+    [CATransaction commit];
+}
+
+-(void) setPlaybackTime:(CGFloat) time {
     
-    [self updateActivityLayerFrame];
-    [self updateSphericalPosition];
+    self.playingTime = time;
+    self.sphericalPosX = [self getXPositionAlongLineForValue:time];
+    
+    [self updateActivityLayerFrame:_sphericalPosX];
+    [self updateSphericalPosition:_sphericalPosX];
+}
+
+-(void) setPlayableDuration:(CGFloat) time {
+    
+    self.playableTime = time;
+    self.playableDurationPosX = [self getXPositionAlongLineForValue:time];
+    
+    [self updatePlayableLayerFrame:_playableDurationPosX];
 }
 
 @end

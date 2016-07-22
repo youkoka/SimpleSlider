@@ -30,10 +30,15 @@
 
 @property (nonatomic, strong) UIColor *sliderBGColor;
 
+@property (nonatomic, strong) UIColor *sliderPlayableColor;
+
 @property (nonatomic, strong) UIColor *sliderActivityColor;
 
 @property (nonatomic, strong) UIColor *diameterColor;
 
--(void) setValue:(CGFloat) value;
+-(void) setPlaybackTime:(CGFloat) time;
+
+-(void) setPlayableDuration:(CGFloat) time;
+
 
 @end
