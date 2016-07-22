@@ -15,8 +15,6 @@
 
 @property (nonatomic, assign) IBOutlet SliderControl *sliderControl;
 
--(void) updateValue;
-
 @end
 
 @implementation ViewController
@@ -31,16 +29,14 @@
     self.sliderControl.sliderActivityColor = [UIColor redColor];
     self.sliderControl.sliderBGColor = [UIColor grayColor];
     self.sliderControl.diameterColor = [UIColor greenColor];
+    self.sliderControl.sliderPlayableColor = [UIColor blueColor];
     
     self.sliderControl.sliderControlDelegate = self;
     
-    [self performSelector:@selector(updateValue) withObject:nil afterDelay:5];
+    [self.sliderControl setPlaybackTime:60];
+    [self.sliderControl setPlayableDuration:80];
 }
 
--(void) updateValue {
-    
-    [self.sliderControl setValue:90];
-}
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
